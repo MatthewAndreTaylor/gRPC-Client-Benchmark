@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1,<2"]
+build-backend = "maturin"
+
+[project]
+name = "pyo3_client"
+requires-python = ">=3.9"
+authors = [
+    {name = "Matthew Taylor"}
+]
+version = "0.1.0"
+
+[tool.maturin]
+bindings = "pyo3"
+module-name = "rs_image_client"
+features = ["pyo3/extension-module", "pyo3/generate-import-lib"]

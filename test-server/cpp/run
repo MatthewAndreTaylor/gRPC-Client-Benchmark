@@ -1,0 +1,6 @@
+#!/bin/bash
+
+. $(dirname $0)/config.sh
+
+$DOCKER_RUN -p 50051:50051 --name $CONTAINER_NAME -d $DOCKER_IMAGE $(dirname $0)/server
+echo "Remember to: docker kill $CONTAINER_NAME"
