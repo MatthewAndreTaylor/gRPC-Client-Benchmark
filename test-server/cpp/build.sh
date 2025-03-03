@@ -6,15 +6,14 @@ CXX=g++
 CXXFLAGS="-std=c++17 -I/usr/local/include -pthread"
 LDFLAGS='-L/usr/local/lib `pkg-config --libs grpc++ protobuf`'
 
-PATH=$PATH:/usr/local/bin
-
 docker build -t $DOCKER_IMAGE .
 cp $PROTO_PATH/$PROTO_FILE .
+
 $DOCKER_RUN $DOCKER_IMAGE protoc \
 	--cpp_out=. \
 	--grpc_out=. \
-	--plugin=protoc-gen-grpc=grpc_cpp_plugin \
+	--plugin=protoc-gen-grpc=/usr/bin/grpc_cpp_plugin \
 	-I. \
 	$PROTO_FILE
 $DOCKER_RUN $DOCKER_IMAGE /bin/sh -c \
-	"$CXX $CXXFLAGS -o server server.cpp test.pb.cc test.grpc.pb.cc $LDFLAGS"
+	"$CXX $CXXFLAGS -o server server.cpp image_service.pb.cc image_service.grpc.pb.cc $LDFLAGS"

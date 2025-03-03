@@ -33,7 +33,7 @@ Use the following commands to build and run the `image_service` test server:
 
 ```bash
 cd test-server/cpp
-./build
+./build.sh
 ./run
 ```
 

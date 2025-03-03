@@ -1,10 +1,10 @@
 FROM ubuntu:latest
 
 RUN apt update && apt install -y \
-	build-essential \
 	autoconf \
-	libprotobuf-dev \
+	build-essential \
 	libgrpc++-dev \
+	libprotobuf-dev \
 	libtool \
 	pkg-config \
 	protobuf-compiler \

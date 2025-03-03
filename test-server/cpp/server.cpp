@@ -84,7 +84,7 @@ class ImageServiceImpl final : public ImageService::Service {
 };
 
 void RunServer() {
-    images = ReadImages("../test_images");
+    images = ReadImages("test_images");
 
     std::string server_address("0.0.0.0:50051");
     ImageServiceImpl service;
