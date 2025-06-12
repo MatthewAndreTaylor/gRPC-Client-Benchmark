@@ -1,11 +1,14 @@
 use std::{io::Read, path::Path, sync::Arc};
 
 use tokio::sync::mpsc;
-use tonic::{transport::Server, Request, Response, Status};
 use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
+use tonic::{transport::Server, Request, Response, Status};
 
 use image_service::image_service_server::{ImageService, ImageServiceServer};
-use image_service::{ListImagesRequest, ListImagesResponse, StreamImagesRequest, StreamImageResponse, ServiceMetadataRequest, ServiceMetadataResponse};
+use image_service::{
+    ListImagesRequest, ListImagesResponse, ServiceMetadataRequest, ServiceMetadataResponse,
+    StreamImageResponse, StreamImagesRequest,
+};
 
 pub mod image_service {
     tonic::include_proto!("image_service");
@@ -36,7 +39,11 @@ impl ImageServiceImpl {
                     }
                     images.push(StreamImageResponse {
                         name: path.file_name().unwrap().to_string_lossy().to_string(),
-                        format: path.extension().unwrap_or_default().to_string_lossy().to_string(),
+                        format: path
+                            .extension()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string(),
                         content: content,
                     });
                 }
@@ -48,7 +55,6 @@ impl ImageServiceImpl {
 
 #[tonic::async_trait]
 impl ImageService for ImageServiceImpl {
-
     async fn service_metadata(
         &self,
         _request: Request<ServiceMetadataRequest>,
@@ -98,7 +104,7 @@ impl ImageService for ImageServiceImpl {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "0.0.0.0:50051".parse()?;
     let service = ImageServiceImpl {
-        images: Arc::new(ImageServiceImpl::read_images("images")),
+        images: Arc::new(ImageServiceImpl::read_images("../test_images")),
     };
 
     println!("Server listening on {}", addr);

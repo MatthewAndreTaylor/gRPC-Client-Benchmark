@@ -178,7 +178,7 @@ def get_service_meta():
 
 if __name__ == "__main__":
     metadata = get_service_meta()
-    seed = 83
+    seed = 84
     random.seed(seed)
     # unary_profiles = unary_unary_profiles()
 

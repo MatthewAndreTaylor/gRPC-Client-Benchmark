@@ -1,7 +1,7 @@
+use futures_util::TryStreamExt;
 use image_service::image_service_client::ImageServiceClient;
 use image_service::{ListImagesRequest, StreamImagesRequest};
 use pyo3::prelude::*;
-use futures_util::TryStreamExt;
 use tokio::runtime::Runtime;
 use tonic::transport::Channel;
 
@@ -24,9 +24,9 @@ impl GrpcClient {
             .build()?;
 
         let client = runtime.block_on(async {
-            ImageServiceClient::connect(url)
-                .await
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Connect error: {e}")))
+            ImageServiceClient::connect(url).await.map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Connect error: {e}"))
+            })
         })?;
 
         Ok(Self {
@@ -37,10 +37,13 @@ impl GrpcClient {
 
     fn list_images(&mut self) -> PyResult<Vec<String>> {
         self.runtime.block_on(async {
-            let response = self.client
+            let response = self
+                .client
                 .list_images(tonic::Request::new(ListImagesRequest {}))
                 .await
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}")))?;
+                .map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}"))
+                })?;
 
             Ok(response.into_inner().image_names)
         })
@@ -49,14 +52,19 @@ impl GrpcClient {
     fn stream_images(&mut self, image_names: Vec<String>) -> PyResult<Vec<(String, Vec<u8>)>> {
         self.runtime.block_on(async {
             let request = tonic::Request::new(StreamImagesRequest { image_names });
-            let stream = self.client
+            let stream = self
+                .client
                 .stream_images(request)
                 .await
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}")))?
+                .map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}"))
+                })?
                 .into_inner();
 
             let images: Vec<_> = stream
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Stream error: {e}")))
+                .map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Stream error: {e}"))
+                })
                 .map_ok(|image| (image.name, image.content))
                 .try_collect()
                 .await?;

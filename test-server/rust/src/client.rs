@@ -13,7 +13,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Calling list_images...");
     let request = tonic::Request::new(ListImagesRequest {});
     let response = client.list_images(request).await?;
-    
     let image_names = response.into_inner().image_names;
     println!("Response: {:?}", image_names);
 
@@ -24,7 +23,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let mut stream = client.stream_images(request).await?.into_inner();
-
     while let Some(response_image) = stream.message().await? {
         println!("Received image: {}", response_image.name);
         // Print the first 10 bytes of the image
