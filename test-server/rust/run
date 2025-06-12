@@ -1,5 +1,0 @@
-#!/bin/bash
-
-cargo run --bin image-service-server
-
-# cargo run --bin image-service-client

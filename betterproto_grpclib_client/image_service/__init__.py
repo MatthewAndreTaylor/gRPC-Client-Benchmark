@@ -24,13 +24,12 @@ if TYPE_CHECKING:
 
 
 @dataclass(eq=False, repr=False)
-class Image(betterproto.Message):
+class StreamImageResponse(betterproto.Message):
     """Message representing an Image"""
 
     name: str = betterproto.string_field(1)
-    content: bytes = betterproto.bytes_field(2)
-    format: str = betterproto.string_field(3)
-    size_in_bytes: int = betterproto.int32_field(4)
+    format: str = betterproto.string_field(2)
+    content: bytes = betterproto.bytes_field(3)
 
 
 @dataclass(eq=False, repr=False)
@@ -52,13 +51,6 @@ class StreamImagesRequest(betterproto.Message):
     """Request message for StreamImages RPC"""
 
     image_names: List[str] = betterproto.string_field(1)
-
-
-@dataclass(eq=False, repr=False)
-class StreamImagesResponse(betterproto.Message):
-    """Stream response for StreamImages RPC"""
-
-    image: "Image" = betterproto.message_field(1)
 
 
 class ImageServiceStub(betterproto.ServiceStub):
@@ -86,11 +78,11 @@ class ImageServiceStub(betterproto.ServiceStub):
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
         metadata: Optional["MetadataLike"] = None
-    ) -> AsyncIterator["StreamImagesResponse"]:
+    ) -> AsyncIterator["StreamImageResponse"]:
         async for response in self._unary_stream(
             "/image_service.ImageService/StreamImages",
             stream_images_request,
-            StreamImagesResponse,
+            StreamImageResponse,
             timeout=timeout,
             deadline=deadline,
             metadata=metadata,
@@ -107,9 +99,9 @@ class ImageServiceBase(ServiceBase):
 
     async def stream_images(
         self, stream_images_request: "StreamImagesRequest"
-    ) -> AsyncIterator["StreamImagesResponse"]:
+    ) -> AsyncIterator["StreamImageResponse"]:
         raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-        yield StreamImagesResponse()
+        yield StreamImageResponse()
 
     async def __rpc_list_images(
         self, stream: "grpclib.server.Stream[ListImagesRequest, ListImagesResponse]"
@@ -119,7 +111,7 @@ class ImageServiceBase(ServiceBase):
         await stream.send_message(response)
 
     async def __rpc_stream_images(
-        self, stream: "grpclib.server.Stream[StreamImagesRequest, StreamImagesResponse]"
+        self, stream: "grpclib.server.Stream[StreamImagesRequest, StreamImageResponse]"
     ) -> None:
         request = await stream.recv_message()
         await self._call_rpc_handler_server_stream(
@@ -140,6 +132,6 @@ class ImageServiceBase(ServiceBase):
                 self.__rpc_stream_images,
                 grpclib.const.Cardinality.UNARY_STREAM,
                 StreamImagesRequest,
-                StreamImagesResponse,
+                StreamImageResponse,
             ),
         }

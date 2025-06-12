@@ -2,15 +2,14 @@
 name = "rs_image_client"
 version = "0.1.0"
 edition = "2021"
-authors = [
-    "Matthew Taylor"
-]
+authors = ["Matthew Taylor"]
 
 [dependencies]
 tonic = "*"
 prost = "0.13"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-pyo3 = { version = "0.20", features = ["extension-module"] }
+futures-util = "*"
+tokio = { version = "1.9", features = ["rt-multi-thread"] }
+pyo3 = { version = "0.25", features = ["extension-module"] }
 
 [lib]
 name = "rs_image_client"
@@ -18,3 +17,4 @@ crate-type = ["cdylib"]
 
 [build-dependencies]
 tonic-build = "*"
+protoc-bin-vendored = "3"

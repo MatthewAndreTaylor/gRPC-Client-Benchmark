@@ -25,15 +25,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut stream = client.stream_images(request).await?.into_inner();
 
-    while let Some(response) = stream.message().await? {
-        if let Some(image) = response.image {
-            println!("Received image: {}", image.name);
-
-            // Print the first 10 bytes of the image
-            let image_data = image.content;
-            let first_10_bytes = &image_data[..10];
-            println!("First 10 bytes: {:?}", first_10_bytes);
-        }
+    while let Some(response_image) = stream.message().await? {
+        println!("Received image: {}", response_image.name);
+        // Print the first 10 bytes of the image
+        let image_data = response_image.content;
+        let first_10_bytes = &image_data[..10];
+        println!("First 10 bytes: {:?}", first_10_bytes);
     }
 
     Ok(())

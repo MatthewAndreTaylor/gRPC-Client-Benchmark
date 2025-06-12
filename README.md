@@ -6,7 +6,7 @@ This library intends to bench mark the performance of various [Grpc](https://grp
 
 This experiment explores the efficiency and feasibility of streaming images to Python clients using Grpc.
 Image streaming is crucial in various real-world applications, such as remote sensing, medical imaging, and video surveillance, where low-latency and high-performance data transmission are essential.
-By benchmarking this experiment, we aim to evaluate the scalability and responsiveness of each different Python library implementation.
+By benchmarking this experiment, we aim to evaluate the scalability and responsiveness of each different Python library implementation. The test images used are of 4K resolution, simulating large payloads.
 
 The proposed `image_service` implements two key endpoints:
 
@@ -29,7 +29,7 @@ The proposed `image_service` implements two key endpoints:
 
 ### Setting Up the test server
 
-Use the following commands to build and run the `image_service` test server:
+Use the following commands to build and run the `image_service` test c++ server as a container:
 
 ```bash
 cd test-server/cpp
@@ -40,17 +40,18 @@ cd test-server/cpp
 
 ### Setting up the client profiler
 
-Use the following commands to run the client profiler:
+Use the following commands to run the client benchmarking profiler:
 
 ```bash
+sudo apt install python3-full python-dev pipx
 poetry install
-poetry run python grpc_python_profile.py 
+poetry run python grpc_python_profile.py
 ```
 
 Running the profiler will create a set of graphs inside the `_profiles` directory.
+The graphs are titled `GRPC Client Performance: <client-platform> : <service-implementation> - <type>`
 
-
-<img src="https://github.com/MatthewAndreTaylor/protoWrap/blob/main/_profiles/grpc_python_profile-46.png" />
+<img src="https://github.com/MatthewAndreTaylor/protoWrap/blob/main/_profiles/grpc_python_profile_fps-81.png" />
 
 
 ## Client profiler metrics
@@ -58,3 +59,25 @@ Running the profiler will create a set of graphs inside the `_profiles` director
 The client profiler first imports each of the client wrapper packages.
 Each wrapper package implements `list_images()` and `stream_images(image_names: list[str])` which call their respected endpoint.
 The benchmark script runs multiple trials for random arrangements of profiles enforcing fairness.
+
+
+### Running the example python clients
+
+Add the `--show` argument to visualize the streamed images and have a display available.
+
+```bash
+# betterproto + grpclib client
+poetry run python -m betterproto_grpclib_client
+
+# google.protobuf + grpcio client
+poetry run python -m protobuf_grpcio_client
+
+# google.protobuf + grpclib client
+poetry run python -m protobuf_grpclib_client
+
+# rust / python bindings have extra install step
+poetry run python -m pip install ./pyo3_client
+
+# tonic + tokio client
+poetry run python -m pyo3_client
+```

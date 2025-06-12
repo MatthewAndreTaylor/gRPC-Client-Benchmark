@@ -1,29 +1,41 @@
 import random
 import time
 import sys
+import logging
 from pandas import DataFrame
 import matplotlib.pyplot as plt
 import asyncio
 
-from betterproto_grpclib_client import (
-    list_images as list_images_betterproto,
-    stream_images as stream_images_betterproto,
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from protobuf_grpclib_client import (
-    list_images as list_images_protobuf,
-    stream_images as stream_images_protobuf,
-)
 
-from protobuf_grpcio_client import (
-    list_images as list_images_protobuf_grpcio,
-    stream_images as stream_images_protobuf_grpcio,
-)
+def safe_import(module_name, name):
+    try:
+        module = __import__(module_name)
+        return getattr(module, name)
+    except Exception as e:
+        logger.warning(f"Failed to import {name} from {module_name}: {e}")
+        return None
 
-from pyo3_client import (
-    list_images as list_images_pyo3,
-    stream_images as stream_images_pyo3,
-)
+
+unary_methods = [
+    safe_import("betterproto_grpclib_client", "list_images"),
+    safe_import("protobuf_grpclib_client", "list_images"),
+    safe_import("protobuf_grpcio_client", "list_images"),
+    safe_import("pyo3_client", "list_images"),
+]
+
+streaming_methods = [
+    safe_import("betterproto_grpclib_client", "stream_images"),
+    safe_import("protobuf_grpclib_client", "stream_images"),
+    safe_import("protobuf_grpcio_client", "stream_images"),
+    safe_import("pyo3_client", "stream_images"),
+]
+
+unary_methods = [method for method in unary_methods if method is not None]
+streaming_methods = [method for method in streaming_methods if method is not None]
+
 
 class GrpcOperationProfile:
     def __init__(self, op, size, constructor_params=[]):
@@ -49,7 +61,7 @@ class GrpcOperationProfile:
 
 def run_profiles(profiles: GrpcOperationProfile, trials: int) -> None:
     for i in range(trials):
-        print(f"Trial: {i + 1}/{trials}")
+        logger.info(f"Trial: {i + 1}/{trials}")
         random.shuffle(profiles)
         for profile in profiles:
             profile.run()
@@ -72,11 +84,13 @@ def execute_profiles(profiles, num_trials):
     return df
 
 
-def plot_profiles(df, seed : int):
+def plot_profiles(df, seed: int, service_metadata: str):
     # Plotting time as a function of argument size
     _, ax = plt.subplots()
-    plt.title(f"GRPC Client Performance : {sys.platform}")
-    ax.set_xlabel("Size of the argument")
+    plt.title(
+        f"GRPC Client Performance : {sys.platform} : {service_metadata} - Total Time"
+    )
+    ax.set_xlabel("Number of frames")
     ax.set_ylabel("Time (microseconds)")
 
     grouped = df.groupby(["module", "operation"])
@@ -89,10 +103,10 @@ def plot_profiles(df, seed : int):
     plt.close()
 
 
-def plot_fps(df, seed : int):
+def plot_fps(df, seed: int, service_metadata: str):
     # Plotting fps
     _, ax = plt.subplots()
-    plt.title(f"GRPC Client Performance : {sys.platform} - FPS")
+    plt.title(f"GRPC Client Performance : {sys.platform} : {service_metadata} - FPS")
     ax.set_xlabel("Number of frames")
     ax.set_ylabel("FPS")
 
@@ -105,69 +119,77 @@ def plot_fps(df, seed : int):
         for num_frames, time in time_for_frames.items():
             seconds = time / 10**6
             fps_values.append(num_frames / seconds)
-            frames.append(num_frames)     
+            frames.append(num_frames)
 
-        ax.plot(frames, fps_values, label=name)
+        ax.plot(frames, fps_values, label=name, marker="o")
+
+        # Annotate every second point with its FPS value
+        # for x, y in zip(frames[::2], fps_values[::2]):
+        #     ax.annotate(f"{y:.1f}", (x, y), textcoords="offset points", xytext=(0,5), ha='center', fontsize=10)
+
+        # Annotate the last point with its FPS value
+        x, y = frames[-1], fps_values[-1]
+        ax.annotate(
+            f"{y:.1f}",
+            (x, y),
+            textcoords="offset points",
+            xytext=(40, 0),
+            ha="center",
+            fontsize=10,
+        )
 
     ax.legend()
     plt.savefig(f"_profiles/grpc_python_profile_fps-{seed}.png")
     plt.close()
 
 
-
-def unary_unary_profiles(call_numbers: list[int] = [1, 10, 100, 1000]):
-    for call_number in call_numbers:
-        def unary_unary_call(method):
-            async def _():
-                for _ in range(call_number):
-                    await method()
-
-            return _
-
-        profiles = [
-            GrpcOperationProfile(unary_unary_call(list_images_protobuf), size=call_number),
-            GrpcOperationProfile(unary_unary_call(list_images_betterproto), size=call_number),
-            GrpcOperationProfile(unary_unary_call(list_images_protobuf_grpcio), size=call_number),
-            GrpcOperationProfile(unary_unary_call(list_images_pyo3), size=call_number),
-        ]
-
-    return profiles
-
-
 def unary_stream_profiles(stream_image_names: list[list[str]]):
     profiles = []
     for image_names in stream_image_names:
-        profiles.append(
-            GrpcOperationProfile(stream_images_protobuf, constructor_params=[image_names], size=len(image_names))
-        )
-        profiles.append(
-            GrpcOperationProfile(stream_images_betterproto, constructor_params=[image_names], size=len(image_names))
-        )
+        for stream_method in streaming_methods:
+            stream_profile = GrpcOperationProfile(
+                stream_method,
+                constructor_params=[image_names],
+                size=len(image_names),
+            )
+            profiles.append(stream_profile)
 
-        profiles.append(
-            GrpcOperationProfile(stream_images_protobuf_grpcio, constructor_params=[image_names], size=len(image_names))
-        )
-
-        profiles.append(
-            GrpcOperationProfile(stream_images_pyo3, constructor_params=[image_names], size=len(image_names))
-        )
-    
     return profiles
 
+
+def get_service_meta():
+    import grpc
+    from google.protobuf import empty_pb2
+
+    channel = grpc.insecure_channel("localhost:50051")
+    request = empty_pb2.Empty()
+    response_bytes = channel.unary_unary(
+        "/image_service.ImageService/ServiceMetadata",
+        request_serializer=empty_pb2.Empty.SerializeToString,
+        response_deserializer=lambda x: x,
+    )(request)
+    channel.close()
+
+    response_bytes = response_bytes[2:]
+    response_string = response_bytes.decode("utf-8").strip()
+    logger.info(f"Service: {response_string}")
+    return response_string
+
+
 if __name__ == "__main__":
-    seed = 50
+    metadata = get_service_meta()
+    seed = 83
     random.seed(seed)
-    #unary_profiles = unary_unary_profiles()
+    # unary_profiles = unary_unary_profiles()
 
     base_image_names = ["image-0.jpg", "image-1.jpg", "image-2.jpg"]
 
     # smaller sub samples
-    stream_image_names = [ base_image_names* i for i in range(1, 100, 5)]
+    stream_image_names = [base_image_names * i for i in range(1, 100, 5)]
     random.shuffle(stream_image_names)
 
     stream_profiles = unary_stream_profiles(stream_image_names)
 
-    df = execute_profiles(stream_profiles, 5)
-    plot_profiles(df, seed)
-    plot_fps(df, seed)
-    
+    df = execute_profiles(stream_profiles, 6)
+    plot_profiles(df, seed, metadata)
+    plot_fps(df, seed, metadata)

@@ -6,6 +6,7 @@ import typing
 
 import grpclib.const
 import grpclib.client
+
 if typing.TYPE_CHECKING:
     import grpclib.server
 
@@ -15,26 +16,32 @@ from . import image_service_pb2
 class ImageServiceBase(abc.ABC):
 
     @abc.abstractmethod
-    async def ListImages(self, stream: 'grpclib.server.Stream[image_service_pb2.ListImagesRequest, image_service_pb2.ListImagesResponse]') -> None:
+    async def ListImages(
+        self,
+        stream: "grpclib.server.Stream[image_service_pb2.ListImagesRequest, image_service_pb2.ListImagesResponse]",
+    ) -> None:
         pass
 
     @abc.abstractmethod
-    async def StreamImages(self, stream: 'grpclib.server.Stream[image_service_pb2.StreamImagesRequest, image_service_pb2.StreamImagesResponse]') -> None:
+    async def StreamImages(
+        self,
+        stream: "grpclib.server.Stream[image_service_pb2.StreamImagesRequest, image_service_pb2.StreamImageResponse]",
+    ) -> None:
         pass
 
     def __mapping__(self) -> typing.Dict[str, grpclib.const.Handler]:
         return {
-            '/image_service.ImageService/ListImages': grpclib.const.Handler(
+            "/image_service.ImageService/ListImages": grpclib.const.Handler(
                 self.ListImages,
                 grpclib.const.Cardinality.UNARY_UNARY,
                 image_service_pb2.ListImagesRequest,
                 image_service_pb2.ListImagesResponse,
             ),
-            '/image_service.ImageService/StreamImages': grpclib.const.Handler(
+            "/image_service.ImageService/StreamImages": grpclib.const.Handler(
                 self.StreamImages,
                 grpclib.const.Cardinality.UNARY_STREAM,
                 image_service_pb2.StreamImagesRequest,
-                image_service_pb2.StreamImagesResponse,
+                image_service_pb2.StreamImageResponse,
             ),
         }
 
@@ -44,13 +51,13 @@ class ImageServiceStub:
     def __init__(self, channel: grpclib.client.Channel) -> None:
         self.ListImages = grpclib.client.UnaryUnaryMethod(
             channel,
-            '/image_service.ImageService/ListImages',
+            "/image_service.ImageService/ListImages",
             image_service_pb2.ListImagesRequest,
             image_service_pb2.ListImagesResponse,
         )
         self.StreamImages = grpclib.client.UnaryStreamMethod(
             channel,
-            '/image_service.ImageService/StreamImages',
+            "/image_service.ImageService/StreamImages",
             image_service_pb2.StreamImagesRequest,
-            image_service_pb2.StreamImagesResponse,
+            image_service_pb2.StreamImageResponse,
         )

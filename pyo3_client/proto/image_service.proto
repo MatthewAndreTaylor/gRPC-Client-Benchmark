@@ -5,11 +5,10 @@ package image_service;
 // Matthew's Test Image Service
 
 // Message representing an Image
-message Image {
+message StreamImageResponse {
     string name = 1;             // Name of the image
-    bytes content = 2;           // Image content as bytes
-    string format = 3;           // Image format (e.g., jpg, png)
-    int32 size_in_bytes = 4;     // Size of the image in bytes
+    string format = 2;           // Image format (e.g., "jpg", "png")
+    bytes content = 3;           // Image content as bytes
 }
 
 // Request message for ListImages RPC
@@ -25,16 +24,11 @@ message StreamImagesRequest {
     repeated string image_names = 1; // List of image names to stream
 }
 
-// Stream response for StreamImages RPC
-message StreamImagesResponse {
-    Image image = 1;  // Image object with name, metadata, and content
-}
-
 // Image service definition
 service ImageService {
     // List available image names
     rpc ListImages (ListImagesRequest) returns (ListImagesResponse);
 
     // Stream images based on the provided names
-    rpc StreamImages (StreamImagesRequest) returns (stream StreamImagesResponse);
+    rpc StreamImages (StreamImagesRequest) returns (stream StreamImageResponse);
 }

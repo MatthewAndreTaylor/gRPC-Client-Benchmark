@@ -9,6 +9,9 @@ __pycache__
 *.pyd
 *.egg-info
 *.whl
+venv
 .venv
 target
 Cargo.lock
+test-server/*/test_images
+*.png

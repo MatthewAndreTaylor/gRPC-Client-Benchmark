@@ -1,10 +1,9 @@
 use image_service::image_service_client::ImageServiceClient;
-use image_service::ListImagesRequest;
+use image_service::{ListImagesRequest, StreamImagesRequest};
 use pyo3::prelude::*;
-use std::sync::{Arc, Mutex};
+use futures_util::TryStreamExt;
 use tokio::runtime::Runtime;
 use tonic::transport::Channel;
-
 
 pub mod image_service {
     tonic::include_proto!("image_service");
@@ -12,87 +11,63 @@ pub mod image_service {
 
 #[pyclass]
 struct GrpcClient {
-    client: Option<Arc<Mutex<ImageServiceClient<Channel>>>>,
+    client: ImageServiceClient<Channel>,
     runtime: Runtime,
 }
 
 #[pymethods]
 impl GrpcClient {
     #[new]
-    fn new() -> Self {
-        Self {
-            client: None,
-            runtime: Runtime::new().unwrap(),
-        }
+    fn new(url: String) -> PyResult<Self> {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+
+        let client = runtime.block_on(async {
+            ImageServiceClient::connect(url)
+                .await
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Connect error: {e}")))
+        })?;
+
+        Ok(Self {
+            client: client,
+            runtime: runtime,
+        })
     }
 
-    fn open(&mut self, url: String) -> PyResult<()> {
-        let rt = &self.runtime;
-        let client = rt.block_on(async { 
-            ImageServiceClient::connect(url).await.ok()
-        });
+    fn list_images(&mut self) -> PyResult<Vec<String>> {
+        self.runtime.block_on(async {
+            let response = self.client
+                .list_images(tonic::Request::new(ListImagesRequest {}))
+                .await
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}")))?;
 
-        if let Some(client) = client {
-            self.client = Some(Arc::new(Mutex::new(client)));
-            Ok(())
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Failed to connect to server"))
-        }
+            Ok(response.into_inner().image_names)
+        })
     }
 
-    fn close(&mut self) {
-        self.client = None;
-    }
+    fn stream_images(&mut self, image_names: Vec<String>) -> PyResult<Vec<(String, Vec<u8>)>> {
+        self.runtime.block_on(async {
+            let request = tonic::Request::new(StreamImagesRequest { image_names });
+            let stream = self.client
+                .stream_images(request)
+                .await
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("RPC error: {e}")))?
+                .into_inner();
 
-    fn list_images(&self) -> PyResult<Vec<String>> {
-        if let Some(client_arc) = &self.client {
-            let client = client_arc.clone();
-            let rt = &self.runtime;
+            let images: Vec<_> = stream
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Stream error: {e}")))
+                .map_ok(|image| (image.name, image.content))
+                .try_collect()
+                .await?;
 
-            let result = rt.block_on(async {
-                let mut client = client.lock().unwrap();
-                let request = tonic::Request::new(ListImagesRequest {});
-                client.list_images(request).await.ok().map(|resp| resp.into_inner().image_names)
-            });
-
-            result.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Failed to get response"))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Client not connected"))
-        }
-    }
-
-    fn stream_images(&self, image_names: Vec<String>) -> PyResult<Vec<(String, Vec<u8>)>> {
-        if let Some(client_arc) = &self.client {
-            let client = client_arc.clone();
-            let rt = &self.runtime;
-    
-            let result = rt.block_on(async {
-                let mut client = client.lock().unwrap();
-                let request = tonic::Request::new(image_service::StreamImagesRequest {
-                    image_names,
-                });
-    
-                let mut stream = client.stream_images(request).await.ok()?.into_inner();
-                let mut images = Vec::new();
-    
-                while let Some(response) = stream.message().await.ok()? {
-                    if let Some(image) = response.image {
-                        images.push((image.name, image.content));
-                    }
-                }
-    
-                Some(images)
-            });
-    
-            result.ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Failed to get response"))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Client not connected"))
-        }
+            Ok(images)
+        })
     }
 }
 
 #[pymodule]
-fn rs_image_client(py: Python, m: &PyModule) -> PyResult<()> {
+fn rs_image_client(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<GrpcClient>()?;
     Ok(())
 }

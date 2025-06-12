@@ -15,20 +15,12 @@ using image_service::ListImagesRequest;
 using image_service::ListImagesResponse;
 using image_service::StreamImagesRequest;
 using image_service::StreamImageResponse;
-using image_service::ServiceMetadataRequest;
-using image_service::ServiceMetadataResponse;
 
-struct ImageData {
-    std::string name;
-    std::string format;
-    std::string content;
-};
+// Read images from a directory and save them
+std::unordered_map<std::string, StreamImageResponse> images;
 
-// Read images from a directory and save them 
-std::vector<ImageData> images;
-
-std::vector<ImageData> ReadImages(const std::string& directory) {
-    std::vector<ImageData> images;
+std::unordered_map<std::string, StreamImageResponse> ReadImages(const std::string& directory) {
+    std::unordered_map<std::string, StreamImageResponse> images;
     size_t num_images = 0;
     for (const auto& entry : std::filesystem::directory_iterator(directory)) {
         if (entry.is_regular_file()) {
@@ -44,11 +36,16 @@ std::vector<ImageData> ReadImages(const std::string& directory) {
             std::cerr << "Failed to open file: " << entry.path() << std::endl;
             continue;
         }
-        ImageData image;
-        image.name = entry.path().filename().string();
-        image.format = entry.path().extension().string();
-        image.content = {std::istreambuf_iterator<char>(file), {}};
-        images.push_back(image);
+
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        auto name = entry.path().filename().string();
+        auto format = entry.path().extension().string();
+
+        StreamImageResponse image_response;
+        image_response.set_name(name);
+        image_response.set_format(format);
+        image_response.set_content(content);
+        images[name] = std::move(image_response);
     }
     return images;
 }
@@ -56,34 +53,19 @@ std::vector<ImageData> ReadImages(const std::string& directory) {
 
 
 class ImageServiceImpl final : public ImageService::Service {
-    Status ServiceMetadata(ServerContext* context, const ServiceMetadataRequest* request, ServiceMetadataResponse* reply) override {
-        reply->set_metadata("image_service-cpp-alpha");
-        return Status::OK;
-    }
-
     Status ListImages(ServerContext* context, const ListImagesRequest* request, ListImagesResponse* reply) override {
-        for (const auto& image : images) {
-            reply->add_image_names(image.name);
+        for (const auto& image: images) {
+            reply->add_image_names(image.first);
         }
         return Status::OK;
     }
     Status StreamImages(ServerContext* context, const StreamImagesRequest* request, grpc::ServerWriter<StreamImageResponse>* writer) override {
-        for (const auto& image_name: request->image_names()) {
-            auto image = std::find_if(images.begin(), images.end(), [&image_name](const ImageData& image) {
-                return image.name == image_name;
-            });
-
-            if (image == images.end()) {
-                continue;
+        for (const auto& image_name : request->image_names()) {
+            auto it = images.find(image_name);
+            if (it != images.end()) {
+                writer->Write(it->second);
             }
-
-            StreamImageResponse image_response;
-            image_response.set_name(image->name);
-            image_response.set_format(image->format);
-            image_response.set_content(image->content);
-            writer->Write(image_response);
         }
-
         return Status::OK;
     }
 };

@@ -1,52 +1,28 @@
-import asyncio
-
+import grpc
 from . import (
-    image_service_pb2_grpc as image_service,
+    image_service_pb2_grpc as image_service_pb2_grpc,
     image_service_pb2 as image_service_pb2,
 )
-
-import grpc
-
-display = False
-
-if display:
-    from PIL import Image
-    import io
 
 
 async def list_images() -> list[str]:
     async with grpc.aio.insecure_channel("localhost:50051") as channel:
-        client = image_service.ImageServiceStub(channel)
-        return (await client.ListImages(image_service_pb2.ListImagesRequest())).image_names
-    
+        client = image_service_pb2_grpc.ImageServiceStub(channel)
+        return (
+            await client.ListImages(image_service_pb2.ListImagesRequest())
+        ).image_names
+
 
 async def stream_images(image_names: list[str]):
     async with grpc.aio.insecure_channel("localhost:50051") as channel:
-        client = image_service.ImageServiceStub(channel)
+        client = image_service_pb2_grpc.ImageServiceStub(channel)
         images: list[image_service_pb2.Image] = []
 
-        streaming_request = image_service_pb2.StreamImagesRequest(image_names=image_names)
+        streaming_request = image_service_pb2.StreamImagesRequest(
+            image_names=image_names
+        )
 
-        async for response in client.StreamImages(streaming_request):
-            images.append(response.image)
+        async for response_image in client.StreamImages(streaming_request):
+            images.append(response_image)
 
         return images
-
-
-if __name__ == "__main__":
-    print("Calling list_images")
-    image_names = asyncio.run(list_images())
-
-    print(f"Response: {image_names}")
-
-    print("Calling stream_images")
-
-    images = asyncio.run(stream_images(image_names))
-
-    for img in images:
-        print(img.name)
-        
-        if display:
-            img_data = io.BytesIO(bytes(img.content))
-            image = Image.open(img_data)
-            image.show()
