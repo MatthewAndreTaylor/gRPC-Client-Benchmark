@@ -21,7 +21,7 @@ The proposed `image_service` implements two key endpoints:
 | [`betterproto_grpclib_client`](/betterproto_grpclib_client/) | `betterproto`     | [`grpclib`](https://pypi.org/project/grpclib/) |
 | [`protobuf_grpcio_client`](/protobuf_grpcio_client/)         | `google.protobuf` | [`grpcio`](https://pypi.org/project/grpcio/)   |
 | [`protobuf_grpclib_client`](/protobuf_grpclib_client/)       | `google.protobuf` | [`grpclib`](https://pypi.org/project/grpclib/) |
-| [`pyo3_client`](/pyo3_client/)                               | `tonic`           | [`tokio`](https://crates.io/crates/tokio)      |
+| [`pyo3_client`](/pyo3_client/)                               | `prost`           | [`tonic`](https://docs.rs/tonic/latest/tonic/) |
 
 
 
