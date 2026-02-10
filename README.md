@@ -16,7 +16,7 @@ The proposed `image_service` implements two key endpoints:
 
 ## Client Libraries Tested
 
-| Client package name | Protocol Buffer Library | Grpc Library |
+| Client package name | Protocol Buffer Library | gRPC Library |
 |--------------------------------------------------------------|-------------------|------------------------------------------------|
 | [`betterproto_grpclib_client`](/betterproto_grpclib_client/) | `betterproto`     | [`grpclib`](https://pypi.org/project/grpclib/) |
 | [`protobuf_grpcio_client`](/protobuf_grpcio_client/)         | `google.protobuf` | [`grpcio`](https://pypi.org/project/grpcio/)   |
