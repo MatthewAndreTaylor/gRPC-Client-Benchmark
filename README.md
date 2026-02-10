@@ -1,10 +1,10 @@
-# Grpc Python client performance benchmarking
+# gRPC Python client performance benchmarking
 
-This library intends to bench mark the performance of various [Grpc](https://grpc.io/) and [Protocol Buffer](https://protobuf.dev/) libraries in Python. 
+This library intends to bench mark the performance of various [gRPC](https://grpc.io/) and [Protocol Buffer](https://protobuf.dev/) libraries in Python. 
 
 ## The Benchmark Experiment
 
-This experiment explores the efficiency and feasibility of streaming images to Python clients using Grpc.
+This experiment explores the efficiency and feasibility of streaming images to Python clients using gRPC.
 Image streaming is crucial in various real-world applications, such as remote sensing, medical imaging, and video surveillance, where low-latency and high-performance data transmission are essential.
 By benchmarking this experiment, we aim to evaluate the scalability and responsiveness of each different Python library implementation. The test images used are of 4K resolution, simulating large payloads.
 
